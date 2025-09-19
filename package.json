@@ -1,0 +1,36 @@
+{
+  "name": "nats-graph",
+  "version": "0.1.0",
+  "description": "Composable graph traversal helpers backed by NATS JetStream key-value buckets.",
+  "type": "module",
+  "main": "./index.js",
+  "exports": {
+    ".": "./index.js"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "test": "node ./test/run.js"
+  },
+  "dependencies": {
+    "@nats-io/jetstream": "^3.0.2",
+    "@nats-io/kv": "^3.0.2",
+    "@nats-io/transport-node": "^3.0.2",
+    "ulid": "^3.0.0"
+  },
+  "files": [
+    "*.js",
+    "*.mjs",
+    "benchmark/",
+    "dashboard/",
+    "test/"
+  ],
+  "license": "UNLICENSED",
+  "keywords": [
+    "nats",
+    "graph",
+    "jetstream",
+    "gremlin"
+  ]
+}

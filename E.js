@@ -36,7 +36,7 @@ export async function E(idOrIds) {
             let arr; try { arr = JSON.parse(raw || '[]') } catch { arr = [] }
             if (!Array.isArray(arr)) arr = [];
             const next = arr.filter(x => String(x) !== String(value));
-            await b.update(key, JSON.stringify(next));
+            await b.put(key, JSON.stringify(next));
           } catch { }
         };
         await removeFromArray(`node.${inc}.outE.__index`, id);
@@ -57,7 +57,7 @@ export async function E(idOrIds) {
             let arr; try { arr = JSON.parse(raw || '[]') } catch { arr = [] }
             if (!Array.isArray(arr)) arr = [];
             const next = arr.filter(x => String(x) !== String(value));
-            await b.update(key, JSON.stringify(next));
+            await b.put(key, JSON.stringify(next));
           } catch { }
         };
         await removeFromArray(`node.${out}.inE.__index`, id);

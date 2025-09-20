@@ -40,7 +40,7 @@ export async function addE(label, incoming, outgoing) {
       if (!Array.isArray(arr)) arr = [];
       if (!arr.includes(value)) {
         arr.push(value);
-        await bkt.update(key, JSON.stringify(arr));
+        await bkt.put(key, JSON.stringify(arr));
       }
     } catch { /* ignore */ }
   };

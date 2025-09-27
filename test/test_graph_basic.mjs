@@ -1,6 +1,5 @@
 import assert from 'node:assert'
 
-import { vertexLabel } from '../label.js'
 import { bucket } from '../bucket.js'
 import { addV } from '../addV.js'
 import { V } from '../V.js'

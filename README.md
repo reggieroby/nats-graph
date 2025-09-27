@@ -37,7 +37,7 @@ The package exposes:
 - `graph()` – create a fluent traversal context.
 - `V`, `E`, `addV`, `addE`, `drop` – low-level helpers for vertices and edges.
 - `connection` – lazy NATS connection primitives.
-- Property helpers from `property.js` and label helpers from `label.js`.
+- Property helpers from `property.js` and label helpers from `steps/label.js`.
 
 See the `test/` directory for more end-to-end examples.
 

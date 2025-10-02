@@ -16,7 +16,8 @@ export function optimizeOpsChain(originalOperationsChain) {
   for (const { prop, args } of getNextChainOperator(originalOperationsChain)) {
     const previousResultType = operationsChain[operationsChainCursor].operation[operationResultTypeKey]
     const operation = nextAvailableOperationsMap.get(previousResultType).get(prop)
-    assert(operation, `Operation ${prop}(${args.join()}) Not Allowed.`)
+
+    assert(operation, `Operation ${prop}(${args.join()}) Not Allowed.`, { operation, prop, args, operationsChain, previousResultType })
 
     operationsChain.push({ prop, args, operation })
     operationsChainCursor++
@@ -33,11 +34,6 @@ export function optimizeOpsChain(originalOperationsChain) {
     )
       operationsChain.splice(1, 2, { prop: '_vHasLabel', args: [c2.args[1]], operation: _vHasLabel })
   }
-
-
-  console.log({ operationsChain })
-
-
 
   return operationsChain
 }

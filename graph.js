@@ -1,10 +1,24 @@
 import { assert } from './config.js'
-import { bucket } from './bucket.js'
 import { optimizeOpsChain } from './optimizer/index.js'
-import { operationFactoryKey, operationStreamWrapperKey } from './steps/types.js'
+import { operationFactoryKey, operationResultType, operationStreamWrapperKey } from './steps/types.js'
+import { kvProviderFactory } from './services/kvProviderFactory.js'
+import { nextAvailableOperationsMap } from './steps/outputTypeMappings.js'
 
-// Make any object with async methods fluent with a single await at the end
-export const graph = () => {
+export const Graph = (config) => {
+  config ||= {}
+  const { kv, kvConfig } = config
+  const kvStore = kvProviderFactory(kv)(kvConfig)
+
+  return {
+    get g() {
+      const shouldveProxiedItIGuess = (k) => (...args) => graph({ kvStore })[k](...args);
+      return nextAvailableOperationsMap.get(operationResultType.graph).keys()
+        .reduce((prev, curr) => ({ ...prev, [curr]: shouldveProxiedItIGuess(curr) }), {});
+    }
+  }
+}
+
+const graph = ({ kvStore }) => {
   const operationsChain = [];
   const handler = {
     get(_, prop) {
@@ -13,15 +27,11 @@ export const graph = () => {
       }
       if (prop === 'then') {
         return (onFulfilled) => onFulfilled(Array.fromAsync((async function* () {
-          const graphBucket = await bucket()
-
-          const start = performance.now()
-
+          await kvStore
           yield* operationChainExecutor({
             opsChain: optimizeOpsChain(operationsChain),
-            graphBucket,
+            kvStore,
           })
-          console.log('time: ', performance.now() - start)
         })()))
       }
       if (['finally', 'catch'].includes(prop)) {
@@ -38,11 +48,11 @@ export const graph = () => {
   return proxy;
 };
 
-async function* operationChainExecutor({ opsChain, graphBucket }) {
+async function* operationChainExecutor({ opsChain, kvStore }) {
   let pipeline = seedPipeline()
 
   for (const step of opsChain) {
-    pipeline = attachStep({ pipeline, step, graphBucket })
+    pipeline = attachStep({ pipeline, step, kvStore })
   }
 
   for await (const result of pipeline) {
@@ -56,12 +66,12 @@ function seedPipeline() {
   })()
 }
 
-function attachStep({ pipeline, step, graphBucket }) {
+function attachStep({ pipeline, step, kvStore }) {
   const { args, operation } = step
 
   const streamWrap = operation[operationStreamWrapperKey]
   if (typeof streamWrap === 'function') {
-    return streamWrap({ ctx: { graphBucket } }, ...args)(pipeline)
+    return streamWrap({ ctx: { kvStore } }, ...args)(pipeline)
   }
 
   const stepFactory = operation[operationFactoryKey]
@@ -71,7 +81,7 @@ function attachStep({ pipeline, step, graphBucket }) {
       const itemIter = stepFactory({
         parent,
         ctx: {
-          graphBucket,
+          kvStore,
         },
         args
       })

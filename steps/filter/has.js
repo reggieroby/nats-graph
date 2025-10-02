@@ -5,17 +5,16 @@ import { operationResultTypeKey, operationFactoryKey, operationResultType, opera
 export const vertexHas = {
   [operationNameKey]: operationName.has,
   [operationResultTypeKey]: operationResultType.vertex,
-  [operationFactoryKey]({ parent: vertexId, ctx: { graphBucket }, args: [key, expected] } = {}) {
+  [operationFactoryKey]({ parent: vertexId, ctx: { kvStore }, args: [key, expected] } = {}) {
     async function* iterator() {
       let getValue;
-      console.log({ vertexId, key, expected })
       if (key === 'label') {
-        getValue = Array.fromAsync(vertexLabel[operationFactoryKey]({ parent: vertexId, ctx: { graphBucket } }))
+        getValue = Array.fromAsync(vertexLabel[operationFactoryKey]({ parent: vertexId, ctx: { kvStore } }))
           .then(([value]) => value)
       } else if (key === 'id') {
         getValue = vertexId
       } else {
-        getValue = graphBucket.get(`node.${vertexId}.property.${key}`)
+        getValue = kvStore.get(`node.${vertexId}.property.${key}`)
           .then(kvValue => kvValue?.json())
       }
       const isSame = (await getValue) === expected
@@ -32,16 +31,16 @@ export const vertexHas = {
 export const edgeHas = {
   [operationNameKey]: operationName.has,
   [operationResultTypeKey]: operationResultType.edge,
-  [operationFactoryKey]({ parent: edgeId, ctx: { graphBucket }, args: [key, expected] } = {}) {
+  [operationFactoryKey]({ parent: edgeId, ctx: { kvStore }, args: [key, expected] } = {}) {
     async function* iterator() {
       let getValue;
       if (key === 'label') {
-        getValue = Array.fromAsync(edgeLabel[operationFactoryKey]({ parent: edgeId, ctx: { graphBucket } }))
+        getValue = Array.fromAsync(edgeLabel[operationFactoryKey]({ parent: edgeId, ctx: { kvStore } }))
           .then(([value]) => value)
       } else if (key === 'id') {
         getValue = edgeId
       } else {
-        getValue = graphBucket.get(`edge.${edgeId}.property.${key}`)
+        getValue = kvStore.get(`edge.${edgeId}.property.${key}`)
           .then(kvValue => kvValue?.json())
       }
       const isSame = (await getValue) === expected

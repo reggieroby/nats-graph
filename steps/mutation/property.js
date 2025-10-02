@@ -4,10 +4,10 @@ import { operationResultTypeKey, operationFactoryKey, operationResultType as sha
 export const vertexPropertyStep = {
   [operationNameKey]: operationName.property,
   [operationResultTypeKey]: sharedElementType.vertex,
-  [operationFactoryKey]({ parent: vertexId, ctx: { graphBucket }, args: [k, v] } = {}) {
+  [operationFactoryKey]({ parent: vertexId, ctx: { kvStore }, args: [k, v] } = {}) {
     assert(!['id', 'label'].includes(k), `Reserved key. Property ${k} not allowed.`)
     async function* itr() {
-      await graphBucket.update(`node.${vertexId}.property.${k}`, JSON.stringify(v));
+      await kvStore.update(`node.${vertexId}.property.${k}`, JSON.stringify(v));
       yield vertexId;
     }
 
@@ -20,10 +20,10 @@ export const vertexPropertyStep = {
 export const edgePropertyStep = {
   [operationNameKey]: operationName.property,
   [operationResultTypeKey]: sharedElementType.edge,
-  [operationFactoryKey]({ parent: edgeId, ctx: { graphBucket }, args: [k, v] } = {}) {
+  [operationFactoryKey]({ parent: edgeId, ctx: { kvStore }, args: [k, v] } = {}) {
     assert(!['id', 'label'].includes(k), `Reserved key. Property ${k} not allowed.`)
     async function* iterator() {
-      await graphBucket.update(`edge.${edgeId}.property.${k}`, JSON.stringify(v));
+      await kvStore.update(`edge.${edgeId}.property.${k}`, JSON.stringify(v));
       yield edgeId;
     }
 

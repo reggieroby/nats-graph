@@ -1,5 +1,7 @@
 # nats-graph
 
+A Gremlin-compatible graph database, backed by NATS KV as the storage engine.
+
 Composable graph traversal helpers built on top of NATS JetStream key-value buckets. The API mirrors a Gremlin-style fluent traversal so you can script graph mutations and queries against a NATS deployment.
 
 ## Installation

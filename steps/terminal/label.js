@@ -3,9 +3,9 @@ import { operationResultTypeKey, operationFactoryKey, operationResultType, opera
 export const vertexLabel = {
   [operationNameKey]: operationName.label,
   [operationResultTypeKey]: operationResultType.value,
-  [operationFactoryKey]({ parent: vertexId, ctx: { graphBucket } } = {}) {
+  [operationFactoryKey]({ parent: vertexId, ctx: { kvStore } } = {}) {
     async function* itr() {
-      yield await graphBucket.get(`node.${vertexId}.label`).then((data) => data.string())
+      yield await kvStore.get(`node.${vertexId}.label`).then((data) => data.string())
     }
 
     return {
@@ -17,9 +17,9 @@ export const vertexLabel = {
 export const edgeLabel = {
   [operationNameKey]: operationName.label,
   [operationResultTypeKey]: operationResultType.value,
-  [operationFactoryKey]({ parent: edgeId, ctx: { graphBucket } } = {}) {
+  [operationFactoryKey]({ parent: edgeId, ctx: { kvStore } } = {}) {
     async function* itr() {
-      yield await graphBucket.get(`edge.${edgeId}.label`).then((data) => data.string())
+      yield await kvStore.get(`edge.${edgeId}.label`).then((data) => data.string())
     }
 
     return {

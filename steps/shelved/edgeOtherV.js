@@ -10,8 +10,8 @@ export const edgeOtherV = {
     if (!edgeId) return VRef(null)
 
     const knownId = args.length ? (args[0] == null ? null : String(args[0])) : null
-    const store = ctx?.graphBucket;
-    assert(store, 'graphBucket required in ctx for edgeOtherV() traversal');
+    const store = ctx?.kvStore;
+    assert(store, 'kvStore required in ctx for edgeOtherV() traversal');
 
     return {
       [Symbol.asyncIterator]: (async function* () {

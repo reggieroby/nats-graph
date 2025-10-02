@@ -4,7 +4,7 @@ import { operationResultTypeKey, operationFactoryKey, operationResultType, opera
 export const V = {
   [operationNameKey]: operationName.V,
   [operationResultTypeKey]: operationResultType.vertex,
-  [operationFactoryKey]({ ctx: { graphBucket } = {}, args: [idOrIds] } = {}) {
+  [operationFactoryKey]({ ctx: { kvStore } = {}, args: [idOrIds] } = {}) {
     async function* itr() {
       if (Array.isArray(idOrIds)) {
         for (const id of idOrIds) {
@@ -14,7 +14,8 @@ export const V = {
       }
 
       if (idOrIds === undefined || idOrIds === null) {
-        for await (const key of await graphBucket.keys(`node.*`)) {
+        console.log('we need kvstore.keys.....', kvStore.keys)
+        for await (const key of await kvStore.keys(`node.*`)) {
           yield key.split('.').pop()
         }
         return;

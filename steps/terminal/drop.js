@@ -13,17 +13,17 @@ const removeFromArray = async (store, key, value) => {
 export const dropGraph = {
   [operationNameKey]: operationName.drop,
   [operationResultTypeKey]: operationResultType.value,
-  [operationFactoryKey]({ ctx: { graphBucket } = {} } = {}) {
+  [operationFactoryKey]({ ctx: { kvStore } = {} } = {}) {
     async function* itr() {
       const deleteByPattern = async (pattern) => {
-        const keys = await graphBucket.keys(pattern)
+        const keys = await kvStore.keys(pattern)
         for await (const key of keys) {
-          await graphBucket.delete(key)
+          await kvStore.delete(key)
         }
       }
       await Promise.all([
-        deleteByPattern('node.*'),
-        deleteByPattern('edge.*')
+        deleteByPattern('node.>'),
+        deleteByPattern('edge.>')
       ])
     }
 
@@ -36,38 +36,38 @@ export const dropGraph = {
 export const dropVertex = {
   [operationNameKey]: operationName.drop,
   [operationResultTypeKey]: operationResultType.value,
-  [operationFactoryKey]({ parent: vertexId, ctx: { graphBucket } = {} } = {}) {
+  [operationFactoryKey]({ parent: vertexId, ctx: { kvStore } = {} } = {}) {
     async function* iterator() {
-      await graphBucket.delete(`node.${vertexId}`).catch(() => { })
+      await kvStore.delete(`node.${vertexId}`).catch(() => { })
 
-      const nodeKeys = await graphBucket.keys(`node.${vertexId}.*`).catch(() => [])
+      const nodeKeys = await kvStore.keys(`node.${vertexId}.*`).catch(() => [])
       for await (const key of nodeKeys) {
-        await graphBucket.delete(key).catch(() => { })
+        await kvStore.delete(key).catch(() => { })
       }
 
-      const inboundEdges = await graphBucket.keys('edge.*.incoming').then(Array.fromAsync).catch(() => [])
-      const outboundEdges = await graphBucket.keys('edge.*.outgoing').then(Array.fromAsync).catch(() => [])
+      const inboundEdges = await kvStore.keys('edge.*.incoming').then(Array.fromAsync).catch(() => [])
+      const outboundEdges = await kvStore.keys('edge.*.outgoing').then(Array.fromAsync).catch(() => [])
       const bases = new Set()
 
       for (const key of inboundEdges) {
-        const value = await graphBucket.get(key).then((d) => d.string()).catch(() => null)
+        const value = await kvStore.get(key).then((d) => d.string()).catch(() => null)
         if (value === vertexId) bases.add(key.slice(0, -'.incoming'.length))
       }
 
       for (const key of outboundEdges) {
-        const value = await graphBucket.get(key).then((d) => d.string()).catch(() => null)
+        const value = await kvStore.get(key).then((d) => d.string()).catch(() => null)
         if (value === vertexId) bases.add(key.slice(0, -'.outgoing'.length))
       }
 
       for (const base of bases) {
         for (const suffix of ['', '.label', '.incoming', '.outgoing']) {
-          await graphBucket.delete(`${base}${suffix}`).catch(() => { })
+          await kvStore.delete(`${base}${suffix}`).catch(() => { })
         }
       }
 
-      const outEdgeKeys = await graphBucket.keys(`node.${vertexId}.outE.*`).catch(() => [])
+      const outEdgeKeys = await kvStore.keys(`node.${vertexId}.outE.*`).catch(() => [])
       for await (const key of outEdgeKeys) {
-        await graphBucket.delete(key).catch(() => { })
+        await kvStore.delete(key).catch(() => { })
       }
     }
 
@@ -78,42 +78,42 @@ export const dropVertex = {
 export const dropEdge = {
   [operationNameKey]: operationName.drop,
   [operationResultTypeKey]: operationResultType.value,
-  [operationFactoryKey]({ parent: edgeId, ctx: { graphBucket } = {} } = {}) {
+  [operationFactoryKey]({ parent: edgeId, ctx: { kvStore } = {} } = {}) {
     async function* itr() {
-      const incoming = await graphBucket.get(`edge.${edgeId}.incoming`).then((d) => d.string()).catch(() => null)
-      const outgoing = await graphBucket.get(`edge.${edgeId}.outgoing`).then((d) => d.string()).catch(() => null)
-      const label = await graphBucket.get(`edge.${edgeId}.label`).then((d) => d.string()).catch(() => null)
+      const incoming = await kvStore.get(`edge.${edgeId}.incoming`).then((d) => d.string()).catch(() => null)
+      const outgoing = await kvStore.get(`edge.${edgeId}.outgoing`).then((d) => d.string()).catch(() => null)
+      const label = await kvStore.get(`edge.${edgeId}.label`).then((d) => d.string()).catch(() => null)
 
-      await graphBucket.delete(`edge.${edgeId}`).catch(() => { })
+      await kvStore.delete(`edge.${edgeId}`).catch(() => { })
 
-      const edgeKeys = await graphBucket.keys(`edge.${edgeId}.*`).catch(() => [])
+      const edgeKeys = await kvStore.keys(`edge.${edgeId}.*`).catch(() => [])
       for await (const key of edgeKeys) {
-        await graphBucket.delete(key).catch(() => { })
+        await kvStore.delete(key).catch(() => { })
       }
 
       if (incoming) {
-        await graphBucket.delete(`node.${incoming}.outE.${edgeId}`).catch(() => { })
-        if (label) await graphBucket.delete(`node.${incoming}.outE.${label}.${edgeId}`).catch(() => { })
-        await removeFromArray(graphBucket, `node.${incoming}.outE.__index`, edgeId)
-        if (label) await removeFromArray(graphBucket, `node.${incoming}.outE.${label}.__index`, edgeId)
+        await kvStore.delete(`node.${incoming}.outE.${edgeId}`).catch(() => { })
+        if (label) await kvStore.delete(`node.${incoming}.outE.${label}.${edgeId}`).catch(() => { })
+        await removeFromArray(kvStore, `node.${incoming}.outE.__index`, edgeId)
+        if (label) await removeFromArray(kvStore, `node.${incoming}.outE.${label}.__index`, edgeId)
         if (outgoing) {
-          await removeFromArray(graphBucket, `node.${incoming}.outV.__index`, outgoing)
-          if (label) await removeFromArray(graphBucket, `node.${incoming}.outV.${label}.__index`, outgoing)
+          await removeFromArray(kvStore, `node.${incoming}.outV.__index`, outgoing)
+          if (label) await removeFromArray(kvStore, `node.${incoming}.outV.${label}.__index`, outgoing)
         }
       }
 
       if (outgoing) {
-        await graphBucket.delete(`node.${outgoing}.inE.${edgeId}`).catch(() => { })
-        if (label) await graphBucket.delete(`node.${outgoing}.inE.${label}.${edgeId}`).catch(() => { })
-        await removeFromArray(graphBucket, `node.${outgoing}.inE.__index`, edgeId)
-        if (label) await removeFromArray(graphBucket, `node.${outgoing}.inE.${label}.__index`, edgeId)
+        await kvStore.delete(`node.${outgoing}.inE.${edgeId}`).catch(() => { })
+        if (label) await kvStore.delete(`node.${outgoing}.inE.${label}.${edgeId}`).catch(() => { })
+        await removeFromArray(kvStore, `node.${outgoing}.inE.__index`, edgeId)
+        if (label) await removeFromArray(kvStore, `node.${outgoing}.inE.${label}.__index`, edgeId)
         if (incoming) {
-          await removeFromArray(graphBucket, `node.${outgoing}.inV.__index`, incoming)
-          if (label) await removeFromArray(graphBucket, `node.${outgoing}.inV.${label}.__index`, incoming)
+          await removeFromArray(kvStore, `node.${outgoing}.inV.__index`, incoming)
+          if (label) await removeFromArray(kvStore, `node.${outgoing}.inV.${label}.__index`, incoming)
         }
       }
 
-      await graphBucket.delete(`edges.${edgeId}`).catch(() => { })
+      await kvStore.delete(`edges.${edgeId}`).catch(() => { })
     }
 
     return {

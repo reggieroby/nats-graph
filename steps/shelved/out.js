@@ -12,6 +12,7 @@ export const out = {
   [operationNameKey]: operationName.out,
   [operationResultTypeKey]: sharedElementType.vertex,
   [operationFactoryKey]({ parent, ctx = {}, args = [] } = {}) {
+    assert(false, "Please update this function to steps folder")
     const vertexId = parent == null ? null : String(parent)
     if (!vertexId) {
       async function* empty() { }
@@ -30,7 +31,7 @@ export const out = {
             const keys = await store.keys(`node.${vertexId}.outV.${label}.*`)
             for await (const key of keys) {
               const toId = key.split('.').pop()
-              if (!toId || toId === '__index' || seen.has(toId)) continue
+              if (!toId || seen.has(toId)) continue
               seen.add(toId)
               yield toId
             }
@@ -39,7 +40,7 @@ export const out = {
           const keys = await store.keys(`node.${vertexId}.outV.*`)
           for await (const key of keys) {
             const toId = key.split('.').pop()
-            if (!toId || toId === '__index' || seen.has(toId)) continue
+            if (!toId || seen.has(toId)) continue
             seen.add(toId)
             yield toId
           }

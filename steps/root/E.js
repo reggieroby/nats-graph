@@ -3,7 +3,7 @@ import { operationResultTypeKey, operationFactoryKey, operationResultType, opera
 export const E = {
   [operationNameKey]: operationName.E,
   [operationResultTypeKey]: operationResultType.edge,
-  [operationFactoryKey]({ ctx: { graphBucket } = {}, args: [idOrIds] } = {}) {
+  [operationFactoryKey]({ ctx: { kvStore } = {}, args: [idOrIds] } = {}) {
     async function* iterator() {
       if (Array.isArray(idOrIds)) {
         for (const edgeId of idOrIds) {
@@ -13,7 +13,7 @@ export const E = {
       }
 
       if (idOrIds === undefined || idOrIds === null) {
-        const keys = await graphBucket.keys('edges.*')
+        const keys = await kvStore.keys('edges.*')
         for await (const key of keys) {
           yield key.split('.').pop()
         }

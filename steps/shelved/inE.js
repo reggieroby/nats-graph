@@ -29,8 +29,8 @@ export const inE = {
     }
 
     const wanted = new Set(normalizeLabels(args))
-    const store = ctx?.graphBucket;
-    assert(store, 'graphBucket required in ctx for inE() traversal');
+    const store = ctx?.kvStore;
+    assert(store, 'kvStore required in ctx for inE() traversal');
     const edgeIds = new Set()
 
     const addFromIndex = async (key) => {

@@ -9,8 +9,8 @@ export const edgeInV = {
     const edgeId = parent == null ? null : String(parent)
     if (!edgeId) return VRef(null)
 
-    const store = ctx?.graphBucket;
-    assert(store, 'graphBucket required in ctx for edgeInV() traversal');
+    const store = ctx?.kvStore;
+    assert(store, 'kvStore required in ctx for edgeInV() traversal');
 
     return {
       [Symbol.asyncIterator]: (async function* () {

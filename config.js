@@ -1,9 +1,16 @@
 import nodeAssert from 'node:assert'
-import { connection } from "./natsConnection.js";
 import { ulid } from 'ulid'
 
-export const assert = nodeAssert
+
+export { logger } from './services/logger.js'
+export const assert = (v, message, context) => {
+  try {
+    nodeAssert(v, message)
+  } catch (err) {
+    logger.fatal(message, { err, v, context })
+    nodeAssert(v, message)
+  }
+}
 export {
-  ulid,
-  connection,
+  ulid as uniqueID,
 }

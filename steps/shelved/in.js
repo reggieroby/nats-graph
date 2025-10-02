@@ -22,8 +22,8 @@ export const inStep = {
     const wanted = new Set(normalizeLabels(args))
 
     async function* iterator() {
-      const store = ctx?.graphBucket;
-      assert(store, 'graphBucket required in ctx for in() traversal');
+      const store = ctx?.kvStore;
+      assert(store, 'kvStore required in ctx for in() traversal');
       const seen = new Set()
       try {
         if (wanted.size > 0) {

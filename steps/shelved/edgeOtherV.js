@@ -1,17 +1,16 @@
 import { VRef } from '../root/V.js'
-import { assert } from '../../config.js'
 import { operationFactoryKey, operationNameKey, operationName, operationResultType, operationResultTypeKey } from '../types.js'
 
 export const edgeOtherV = {
   [operationNameKey]: operationName.otherV,
   [operationResultTypeKey]: operationResultType.vertex,
   [operationFactoryKey]({ parent, ctx = {}, args = [] } = {}) {
+    const { kvStore: store, assertAndLog } = ctx;
     const edgeId = parent == null ? null : String(parent)
     if (!edgeId) return VRef(null)
 
     const knownId = args.length ? (args[0] == null ? null : String(args[0])) : null
-    const store = ctx?.kvStore;
-    assert(store, 'kvStore required in ctx for edgeOtherV() traversal');
+    assertAndLog(store, 'kvStore required in ctx for edgeOtherV() traversal');
 
     return {
       [Symbol.asyncIterator]: (async function* () {

@@ -1,24 +1,63 @@
-import { assert } from './config.js'
+import { assertAndLog } from './config.js'
 import { optimizeOpsChain } from './optimizer/index.js'
 import { operationFactoryKey, operationResultType, operationStreamWrapperKey } from './steps/types.js'
-import { kvProviderFactory } from './services/kvProviderFactory.js'
+import { kvProviderFactory } from './kvProvider/factory.js'
 import { nextAvailableOperationsMap } from './steps/outputTypeMappings.js'
+
+const GRAPH_ROOT_OPERATIONS = new Set(
+  nextAvailableOperationsMap.get(operationResultType.graph).keys()
+);
 
 export const Graph = (config) => {
   config ||= {}
   const { kv, kvConfig } = config
-  const kvStore = kvProviderFactory(kv)(kvConfig)
+  let kvStore = kvProviderFactory(kv)
+  const getKVStore = async () => {
+    if (typeof kvStore === 'function') {
+      kvStore = kvStore(kvConfig)
+    }
+    return kvStore
+  }
 
   return {
     get g() {
-      const shouldveProxiedItIGuess = (k) => (...args) => graph({ kvStore })[k](...args);
-      return nextAvailableOperationsMap.get(operationResultType.graph).keys()
-        .reduce((prev, curr) => ({ ...prev, [curr]: shouldveProxiedItIGuess(curr) }), {});
+      const cache = new Map();
+      return new Proxy({}, {
+        get(_target, prop) {
+          if (prop === Symbol.for('nodejs.util.inspect.custom')) {
+            return () => 'GraphTraversalEntry';
+          }
+          if (prop === Symbol.toStringTag) {
+            return 'GraphTraversalEntry';
+          }
+          if (prop === 'then') {
+            return undefined;
+          }
+
+          if (typeof prop !== 'string' || !GRAPH_ROOT_OPERATIONS.has(prop)) {
+            return undefined;
+          }
+
+          if (!cache.has(prop)) {
+            cache.set(prop, (...args) => {
+              const traversal = graph({ getKVStore, assertAndLog });
+              const next = traversal[prop];
+              return typeof next === 'function' ? next(...args) : next;
+            });
+          }
+
+          return cache.get(prop);
+        },
+      });
+    },
+    async close() {
+      const kvStore = await getKVStore()
+      await kvStore.close()
     }
   }
 }
 
-const graph = ({ kvStore }) => {
+const graph = ({ getKVStore, assertAndLog }) => {
   const operationsChain = [];
   const handler = {
     get(_, prop) {
@@ -27,15 +66,15 @@ const graph = ({ kvStore }) => {
       }
       if (prop === 'then') {
         return (onFulfilled) => onFulfilled(Array.fromAsync((async function* () {
-          await kvStore
           yield* operationChainExecutor({
             opsChain: optimizeOpsChain(operationsChain),
-            kvStore,
+            kvStore: await getKVStore(),
+            assertAndLog,
           })
         })()))
       }
       if (['finally', 'catch'].includes(prop)) {
-        assert(false, `${prop} implementation not available.`)
+        assertAndLog(false, `${prop} implementation not available.`)
       }
       return (...args) => {
         operationsChain.push({ prop, args });
@@ -48,11 +87,11 @@ const graph = ({ kvStore }) => {
   return proxy;
 };
 
-async function* operationChainExecutor({ opsChain, kvStore }) {
+async function* operationChainExecutor({ opsChain, kvStore, assertAndLog }) {
   let pipeline = seedPipeline()
 
   for (const step of opsChain) {
-    pipeline = attachStep({ pipeline, step, kvStore })
+    pipeline = attachStep({ pipeline, step, kvStore, assertAndLog })
   }
 
   for await (const result of pipeline) {
@@ -66,12 +105,12 @@ function seedPipeline() {
   })()
 }
 
-function attachStep({ pipeline, step, kvStore }) {
+function attachStep({ pipeline, step, kvStore, assertAndLog }) {
   const { args, operation } = step
 
   const streamWrap = operation[operationStreamWrapperKey]
   if (typeof streamWrap === 'function') {
-    return streamWrap({ ctx: { kvStore } }, ...args)(pipeline)
+    return streamWrap({ ctx: { kvStore, assertAndLog }, args })(pipeline)
   }
 
   const stepFactory = operation[operationFactoryKey]
@@ -82,6 +121,7 @@ function attachStep({ pipeline, step, kvStore }) {
         parent,
         ctx: {
           kvStore,
+          assertAndLog,
         },
         args
       })

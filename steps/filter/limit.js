@@ -1,4 +1,3 @@
-import { assert } from '../../config.js'
 import {
   operationName,
   operationNameKey,
@@ -10,8 +9,10 @@ import {
 const createLimitStep = (resultType) => ({
   [operationNameKey]: operationName.limit,
   [operationResultTypeKey]: resultType,
-  [operationStreamWrapperKey](_, n) {
-    assert(Number.isInteger(n) && n >= 0, 'limit(n) requires a non-negative integer.')
+  [operationStreamWrapperKey]({ ctx = {}, args = [] } = {}) {
+    const { assertAndLog } = ctx;
+    const [n] = args
+    assertAndLog(Number.isInteger(n) && n >= 0, 'limit(n) requires a non-negative integer.')
 
     return (source) => (async function* () {
       let seen = 0

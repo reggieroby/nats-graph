@@ -1,16 +1,15 @@
 import { VRef } from '../root/V.js'
-import { assert } from '../../config.js'
 import { operationFactoryKey, operationNameKey, operationName, operationResultType, operationResultTypeKey } from '../types.js'
 
 export const edgeBothV = {
   [operationNameKey]: operationName.bothV,
   [operationResultTypeKey]: operationResultType.vertex,
   [operationFactoryKey]({ parent, ctx = {} } = {}) {
+    const { kvStore: store, assertAndLog } = ctx;
     const edgeId = parent == null ? null : String(parent)
     if (!edgeId) return VRef(null)
 
-    const store = ctx?.kvStore;
-    assert(store, 'kvStore required in ctx for edgeBothV() traversal');
+    assertAndLog(store, 'kvStore required in ctx for edgeBothV() traversal');
     let incoming = null
     let outgoing = null
 

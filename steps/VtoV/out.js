@@ -1,5 +1,4 @@
-import { assert } from '../../config.js'
-import { operationResultTypeKey, operationFactoryKey, operationResultType as sharedElementType, operationNameKey, operationName } from '../types.js'
+import { operationResultTypeKey, operationFactoryKey, operationResultType as sharedElementType, operationNameKey, operationName, operationStreamWrapperKey } from '../types.js'
 
 const normalizeLabels = (args) => {
   if (!Array.isArray(args)) return []
@@ -11,7 +10,41 @@ const normalizeLabels = (args) => {
 export const out = {
   [operationNameKey]: operationName.out,
   [operationResultTypeKey]: sharedElementType.vertex,
+  [operationStreamWrapperKey]({ ctx = {}, args = [] } = {}) {
+    const { kvStore: store, assertAndLog } = ctx;
+    const wanted = new Set(normalizeLabels(args))
+    return (source) => (async function* () {
+      assertAndLog(store, 'kvStore required in ctx for out() traversal');
+      const seen = new Set()
+      for await (const parent of source) {
+        const vertexId = parent == null ? null : String(parent)
+        if (!vertexId) continue
+        try {
+          if (wanted.size > 0) {
+            for (const label of wanted) {
+              const keys = await store.keys(`node.${vertexId}.outV.${label}.*`)
+              for await (const key of keys) {
+                const toId = key.split('.').pop()
+                if (!toId || toId === '__index' || seen.has(toId)) continue
+                seen.add(toId)
+                yield toId
+              }
+            }
+          } else {
+            const keys = await store.keys(`node.${vertexId}.outV.*`)
+            for await (const key of keys) {
+              const toId = key.split('.').pop()
+              if (!toId || toId === '__index' || seen.has(toId)) continue
+              seen.add(toId)
+              yield toId
+            }
+          }
+        } catch { }
+      }
+    })()
+  },
   [operationFactoryKey]({ parent, ctx = {}, args = [] } = {}) {
+    const { kvStore: store, assertAndLog } = ctx;
     const vertexId = parent == null ? null : String(parent)
     if (!vertexId) {
       async function* empty() { }
@@ -21,8 +54,7 @@ export const out = {
     const wanted = new Set(normalizeLabels(args))
 
     async function* iterator() {
-      const store = ctx?.kvStore;
-      assert(store, 'kvStore required in ctx for out() traversal');
+      assertAndLog(store, 'kvStore required in ctx for out() traversal');
       const seen = new Set()
       try {
         if (wanted.size > 0) {

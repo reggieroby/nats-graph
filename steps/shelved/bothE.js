@@ -1,4 +1,3 @@
-import { assert } from '../../config.js'
 import { operationFactoryKey, operationNameKey, operationName, operationResultType, operationResultTypeKey } from '../types.js'
 
 const normalizeLabels = (args) => {
@@ -22,6 +21,7 @@ export const bothE = {
   [operationNameKey]: operationName.bothE,
   [operationResultTypeKey]: operationResultType.edge,
   [operationFactoryKey]({ parent, ctx = {}, args = [] } = {}) {
+    const { kvStore: store, assertAndLog } = ctx;
     const vertexId = parent == null ? null : String(parent)
     if (!vertexId) {
       async function* empty() { }
@@ -29,8 +29,7 @@ export const bothE = {
     }
 
     const wanted = new Set(normalizeLabels(args))
-    const store = ctx?.kvStore;
-    assert(store, 'kvStore required in ctx for bothE() traversal');
+    assertAndLog(store, 'kvStore required in ctx for bothE() traversal');
     const edgeIds = new Set()
 
     const addFromIndex = async (key) => {

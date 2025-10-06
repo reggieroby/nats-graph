@@ -9,11 +9,13 @@ import {
 export const count = {
   [operationNameKey]: operationName.count,
   [operationResultTypeKey]: operationResultType.value,
-  [operationStreamWrapperKey]() {
+  [operationStreamWrapperKey](_config = {}) {
     // count() takes no arguments; ignore any that are passed
     return (source) => (async function* () {
       let total = 0
-      for await (const _ of source) total += 1
+      // Support passing either an async iterable or a Promise resolving to one
+      const resolved = await source
+      for await (const _ of resolved) total += 1
       yield total
     })()
   }

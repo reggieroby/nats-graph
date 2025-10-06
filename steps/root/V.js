@@ -1,28 +1,58 @@
-import { operationResultTypeKey, operationFactoryKey, operationResultType, operationNameKey, operationName } from '../types.js'
+import { operationResultTypeKey, operationFactoryKey, operationResultType, operationNameKey, operationName, operationStreamWrapperKey } from '../types.js'
 
 
 export const V = {
   [operationNameKey]: operationName.V,
   [operationResultTypeKey]: operationResultType.vertex,
-  [operationFactoryKey]({ ctx: { kvStore } = {}, args: [idOrIds] } = {}) {
-    async function* itr() {
+  [operationStreamWrapperKey]({ ctx: { kvStore } = {}, args: [idOrIds] = [] } = {}) {
+    return (_source) => (async function* () {
       if (Array.isArray(idOrIds)) {
         for (const id of idOrIds) {
-          yield id;
+          if (!kvStore) continue
+          const exists = await kvStore.get(`node.${id}`)
+          if (exists) yield id
         }
         return;
       }
 
       if (idOrIds === undefined || idOrIds === null) {
-        console.log('we need kvstore.keys.....', kvStore.keys)
+        if (!kvStore) return
         for await (const key of await kvStore.keys(`node.*`)) {
           yield key.split('.').pop()
         }
         return;
       }
 
-      // Single id: yield one vertex
-      yield idOrIds;
+      if (kvStore) {
+        const exists = await kvStore.get(`node.${idOrIds}`)
+        if (exists) yield idOrIds
+      }
+    })()
+  },
+  [operationFactoryKey]({ ctx: { kvStore } = {}, args: [idOrIds] = [] } = {}) {
+    async function* itr() {
+      if (Array.isArray(idOrIds)) {
+        for (const id of idOrIds) {
+          if (!kvStore) continue
+          const exists = await kvStore.get(`node.${id}`)
+          if (exists) yield id
+        }
+        return;
+      }
+
+      if (idOrIds === undefined || idOrIds === null) {
+        if (!kvStore) return
+        for await (const key of await kvStore.keys(`node.*`)) {
+          yield key.split('.').pop()
+        }
+        return;
+      }
+
+      // Single id: only yield if present in storage
+      if (kvStore) {
+        const exists = await kvStore.get(`node.${idOrIds}`)
+        if (exists) yield idOrIds
+      }
     }
 
     return {

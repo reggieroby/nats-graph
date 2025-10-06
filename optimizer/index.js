@@ -1,4 +1,4 @@
-import { assert } from "../config.js"
+import { assertAndLog } from "../config.js"
 import { operationName, operationNameKey, operationResultTypeKey } from "../steps/types.js"
 import { nextAvailableOperationsMap } from "../steps/outputTypeMappings.js"
 import { Graph } from "../steps/root/Graph.js"
@@ -17,7 +17,7 @@ export function optimizeOpsChain(originalOperationsChain) {
     const previousResultType = operationsChain[operationsChainCursor].operation[operationResultTypeKey]
     const operation = nextAvailableOperationsMap.get(previousResultType).get(prop)
 
-    assert(operation, `Operation ${prop}(${args.join()}) Not Allowed.`, { operation, prop, args, operationsChain, previousResultType })
+    assertAndLog(operation, `Operation ${prop}(${args.join()}) Not Allowed.`, { operation, prop, args, operationsChain, previousResultType })
 
     operationsChain.push({ prop, args, operation })
     operationsChainCursor++

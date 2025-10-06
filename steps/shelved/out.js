@@ -1,4 +1,3 @@
-import { assert } from '../../config.js'
 import { operationResultTypeKey, operationFactoryKey, operationResultType as sharedElementType, operationNameKey, operationName } from '../types.js'
 
 const normalizeLabels = (args) => {
@@ -12,7 +11,8 @@ export const out = {
   [operationNameKey]: operationName.out,
   [operationResultTypeKey]: sharedElementType.vertex,
   [operationFactoryKey]({ parent, ctx = {}, args = [] } = {}) {
-    assert(false, "Please update this function to steps folder")
+    const { kvStore: store, assertAndLog } = ctx;
+    assertAndLog(false, "Please update this function to steps folder")
     const vertexId = parent == null ? null : String(parent)
     if (!vertexId) {
       async function* empty() { }
@@ -22,8 +22,7 @@ export const out = {
     const wanted = new Set(normalizeLabels(args))
 
     async function* iterator() {
-      const store = ctx?.kvStore;
-      assert(store, 'kvStore required in ctx for out() traversal');
+      assertAndLog(store, 'kvStore required in ctx for out() traversal');
       const seen = new Set()
       try {
         if (wanted.size > 0) {

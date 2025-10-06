@@ -21,11 +21,12 @@
     "ulid": "^3.0.0"
   },
   "files": [
-    "*.js",
-    "*.mjs",
-    "benchmark/",
-    "dashboard/",
-    "test/"
+    "index.js",
+    "graph.js",
+    "config.js",
+    "steps/",
+    "optimizer/",
+    "kvProvider/"
   ],
   "license": "UNLICENSED",
   "keywords": [

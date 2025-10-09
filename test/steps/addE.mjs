@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import test, { suite } from 'node:test'
+import test, { suite, after } from 'node:test'
 
 import { addV } from '../../steps/root/addV.js'
 import { addE } from '../../steps/root/addE.js'
@@ -7,24 +7,27 @@ import { E } from '../../steps/root/E.js'
 import { edgeLabel } from '../../steps/terminal/label.js'
 import { edgeInV } from '../../steps/shelved/edgeInV.js'
 import { edgeOutV } from '../../steps/shelved/edgeOutV.js'
-import { operationFactoryKey } from '../../steps/types.js'
+import { operationFactoryKey, Errors } from '../../steps/types.js'
 import { kvProvider } from '../../kvProvider/memory/provider.js'
+import { diagnostics } from '../../diagnosticsProvider/index.js'
 
+const closers = []
 async function setupKV() {
-  const { interface: kvStore } = await kvProvider()
-  return kvStore
+  const kvp = await kvProvider({ ctx: { diagnostics: diagnostics() } })
+  closers.push(() => kvp.close?.())
+  return kvp.interface
 }
 
-const okAssert = (v, msg) => { if (!v) assert.ok(v, msg) }
-const typeErrAssert = (v, msg) => { if (!v) throw new TypeError(msg) }
+const diags = () => diagnostics()
 
 suite('addE() interface', () => {
+  after(async () => { for (const c of closers) await c?.() })
   test('returns async-iterable and is lazy', async () => {
     const kvStore = await setupKV()
-    const [a] = await Array.fromAsync(addV[operationFactoryKey]({ ctx: { kvStore, assertAndLog: okAssert }, args: ['A'] }))
-    const [b] = await Array.fromAsync(addV[operationFactoryKey]({ ctx: { kvStore, assertAndLog: okAssert }, args: ['B'] }))
+    const [a] = await Array.fromAsync(addV[operationFactoryKey]({ ctx: { kvStore, diagnostics: diags() }, args: ['A'] }))
+    const [b] = await Array.fromAsync(addV[operationFactoryKey]({ ctx: { kvStore, diagnostics: diags() }, args: ['B'] }))
 
-    const itr = addE[operationFactoryKey]({ ctx: { kvStore, assertAndLog: okAssert }, args: ['t', a, b] })
+    const itr = addE[operationFactoryKey]({ ctx: { kvStore, diagnostics: diags() }, args: ['t', a, b] })
     assert.equal(typeof itr?.[Symbol.asyncIterator], 'function')
 
     const before = (await Array.fromAsync(E[operationFactoryKey]({ ctx: { kvStore } }))).length
@@ -38,10 +41,10 @@ suite('addE() interface', () => {
 
   test('basic creation yields exactly one id present in E()', async () => {
     const kvStore = await setupKV()
-    const [a] = await Array.fromAsync(addV[operationFactoryKey]({ ctx: { kvStore, assertAndLog: okAssert }, args: ['A'] }))
-    const [b] = await Array.fromAsync(addV[operationFactoryKey]({ ctx: { kvStore, assertAndLog: okAssert }, args: ['B'] }))
+    const [a] = await Array.fromAsync(addV[operationFactoryKey]({ ctx: { kvStore, diagnostics: diags() }, args: ['A'] }))
+    const [b] = await Array.fromAsync(addV[operationFactoryKey]({ ctx: { kvStore, diagnostics: diags() }, args: ['B'] }))
 
-    const out = await Array.fromAsync(addE[operationFactoryKey]({ ctx: { kvStore, assertAndLog: okAssert }, args: ['t', a, b] }))
+    const out = await Array.fromAsync(addE[operationFactoryKey]({ ctx: { kvStore, diagnostics: diags() }, args: ['t', a, b] }))
     assert.equal(out.length, 1)
     const id = out[0]
     assert.equal(typeof id, 'string')
@@ -53,15 +56,15 @@ suite('addE() interface', () => {
 
   test('label and endpoints reflect provided inputs', async () => {
     const kvStore = await setupKV()
-    const [src] = await Array.fromAsync(addV[operationFactoryKey]({ ctx: { kvStore, assertAndLog: okAssert }, args: ['S'] }))
-    const [dst] = await Array.fromAsync(addV[operationFactoryKey]({ ctx: { kvStore, assertAndLog: okAssert }, args: ['D'] }))
-    const [e] = await Array.fromAsync(addE[operationFactoryKey]({ ctx: { kvStore, assertAndLog: okAssert }, args: ['rel', src, dst] }))
+    const [src] = await Array.fromAsync(addV[operationFactoryKey]({ ctx: { kvStore, diagnostics: diags() }, args: ['S'] }))
+    const [dst] = await Array.fromAsync(addV[operationFactoryKey]({ ctx: { kvStore, diagnostics: diags() }, args: ['D'] }))
+    const [e] = await Array.fromAsync(addE[operationFactoryKey]({ ctx: { kvStore, diagnostics: diags() }, args: ['rel', src, dst] }))
 
     const [lbl] = await Array.fromAsync(edgeLabel[operationFactoryKey]({ parent: e, ctx: { kvStore } }))
     assert.equal(lbl, 'rel')
 
-    const [toV] = await Array.fromAsync(edgeOutV[operationFactoryKey]({ parent: e, ctx: { kvStore, assertAndLog: okAssert } }))
-    const [fromV] = await Array.fromAsync(edgeInV[operationFactoryKey]({ parent: e, ctx: { kvStore, assertAndLog: okAssert } }))
+    const [toV] = await Array.fromAsync(edgeOutV[operationFactoryKey]({ parent: e, ctx: { kvStore, diagnostics: diags() } }))
+    const [fromV] = await Array.fromAsync(edgeInV[operationFactoryKey]({ parent: e, ctx: { kvStore, diagnostics: diags() } }))
     assert.equal(toV, dst)
     assert.equal(fromV, src)
   })
@@ -69,22 +72,22 @@ suite('addE() interface', () => {
   test('multiple adds produce unique ids; bulk add increases E() count by k', async () => {
     const kvStore = await setupKV()
     // First, two separate edges over distinct endpoint pairs to verify uniqueness
-    const [a1] = await Array.fromAsync(addV[operationFactoryKey]({ ctx: { kvStore, assertAndLog: okAssert }, args: ['X'] }))
-    const [b1] = await Array.fromAsync(addV[operationFactoryKey]({ ctx: { kvStore, assertAndLog: okAssert }, args: ['Y'] }))
-    const [a2] = await Array.fromAsync(addV[operationFactoryKey]({ ctx: { kvStore, assertAndLog: okAssert }, args: ['X'] }))
-    const [b2] = await Array.fromAsync(addV[operationFactoryKey]({ ctx: { kvStore, assertAndLog: okAssert }, args: ['Y'] }))
+    const [a1] = await Array.fromAsync(addV[operationFactoryKey]({ ctx: { kvStore, diagnostics: diags() }, args: ['X'] }))
+    const [b1] = await Array.fromAsync(addV[operationFactoryKey]({ ctx: { kvStore, diagnostics: diags() }, args: ['Y'] }))
+    const [a2] = await Array.fromAsync(addV[operationFactoryKey]({ ctx: { kvStore, diagnostics: diags() }, args: ['X'] }))
+    const [b2] = await Array.fromAsync(addV[operationFactoryKey]({ ctx: { kvStore, diagnostics: diags() }, args: ['Y'] }))
 
-    const [e1] = await Array.fromAsync(addE[operationFactoryKey]({ ctx: { kvStore, assertAndLog: okAssert }, args: ['t', a1, b1] }))
-    const [e2] = await Array.fromAsync(addE[operationFactoryKey]({ ctx: { kvStore, assertAndLog: okAssert }, args: ['t', a2, b2] }))
+    const [e1] = await Array.fromAsync(addE[operationFactoryKey]({ ctx: { kvStore, diagnostics: diags() }, args: ['t', a1, b1] }))
+    const [e2] = await Array.fromAsync(addE[operationFactoryKey]({ ctx: { kvStore, diagnostics: diags() }, args: ['t', a2, b2] }))
     assert.notEqual(e1, e2)
 
     const before = (await Array.fromAsync(E[operationFactoryKey]({ ctx: { kvStore } }))).length
     const k = 4
     const created = new Set()
     for (let i = 0; i < k; i++) {
-      const [ai] = await Array.fromAsync(addV[operationFactoryKey]({ ctx: { kvStore, assertAndLog: okAssert }, args: ['S'] }))
-      const [bi] = await Array.fromAsync(addV[operationFactoryKey]({ ctx: { kvStore, assertAndLog: okAssert }, args: ['T'] }))
-      const [eid] = await Array.fromAsync(addE[operationFactoryKey]({ ctx: { kvStore, assertAndLog: okAssert }, args: ['t', ai, bi] }))
+      const [ai] = await Array.fromAsync(addV[operationFactoryKey]({ ctx: { kvStore, diagnostics: diags() }, args: ['S'] }))
+      const [bi] = await Array.fromAsync(addV[operationFactoryKey]({ ctx: { kvStore, diagnostics: diags() }, args: ['T'] }))
+      const [eid] = await Array.fromAsync(addE[operationFactoryKey]({ ctx: { kvStore, diagnostics: diags() }, args: ['t', ai, bi] }))
       created.add(eid)
     }
     assert.equal(created.size, k)
@@ -94,21 +97,21 @@ suite('addE() interface', () => {
 
   test('error handling: invalid/missing args reject', async () => {
     const kvStore = await setupKV()
-    const [a] = await Array.fromAsync(addV[operationFactoryKey]({ ctx: { kvStore, assertAndLog: okAssert }, args: ['P'] }))
-    const [b] = await Array.fromAsync(addV[operationFactoryKey]({ ctx: { kvStore, assertAndLog: okAssert }, args: ['Q'] }))
+    const [a] = await Array.fromAsync(addV[operationFactoryKey]({ ctx: { kvStore, diagnostics: diags() }, args: ['P'] }))
+    const [b] = await Array.fromAsync(addV[operationFactoryKey]({ ctx: { kvStore, diagnostics: diags() }, args: ['Q'] }))
 
     // Missing all args
-    assert.throws(() => addE[operationFactoryKey]({ ctx: { kvStore, assertAndLog: typeErrAssert } }), TypeError)
+    assert.throws(() => addE[operationFactoryKey]({ ctx: { kvStore, diagnostics: diags() }, args: [] }), (err) => err?.code === Errors.EDGE_LABEL_REQUIRED)
 
     // Missing endpoints
-    assert.throws(() => addE[operationFactoryKey]({ ctx: { kvStore, assertAndLog: typeErrAssert }, args: ['r'] }), TypeError)
-    assert.throws(() => addE[operationFactoryKey]({ ctx: { kvStore, assertAndLog: typeErrAssert }, args: ['r', a] }), TypeError)
+    assert.throws(() => addE[operationFactoryKey]({ ctx: { kvStore, diagnostics: diags() }, args: ['r'] }), (err) => err?.code === Errors.EDGE_INCOMING_REQUIRED)
+    assert.throws(() => addE[operationFactoryKey]({ ctx: { kvStore, diagnostics: diags() }, args: ['r', a] }), (err) => err?.code === Errors.EDGE_OUTGOING_REQUIRED)
 
     // Invalid types and empty strings
     for (const bad of [null, undefined, {}, 123, Symbol('s'), '']) {
-      assert.throws(() => addE[operationFactoryKey]({ ctx: { kvStore, assertAndLog: typeErrAssert }, args: [bad, a, b] }), TypeError)
-      assert.throws(() => addE[operationFactoryKey]({ ctx: { kvStore, assertAndLog: typeErrAssert }, args: ['r', bad, b] }), TypeError)
-      assert.throws(() => addE[operationFactoryKey]({ ctx: { kvStore, assertAndLog: typeErrAssert }, args: ['r', a, bad] }), TypeError)
+      assert.throws(() => addE[operationFactoryKey]({ ctx: { kvStore, diagnostics: diags() }, args: [bad, a, b] }), (err) => err?.code === Errors.EDGE_LABEL_REQUIRED)
+      assert.throws(() => addE[operationFactoryKey]({ ctx: { kvStore, diagnostics: diags() }, args: ['r', bad, b] }), (err) => err?.code === Errors.EDGE_INCOMING_REQUIRED)
+      assert.throws(() => addE[operationFactoryKey]({ ctx: { kvStore, diagnostics: diags() }, args: ['r', a, bad] }), (err) => err?.code === Errors.EDGE_OUTGOING_REQUIRED)
     }
   })
 
@@ -117,7 +120,16 @@ suite('addE() interface', () => {
     const fakeA = 'nonexistent-A'
     const fakeB = 'nonexistent-B'
     await assert.rejects(async () => {
-      await Array.fromAsync(addE[operationFactoryKey]({ ctx: { kvStore, assertAndLog: typeErrAssert }, args: ['t', fakeA, fakeB] }))
-    }, TypeError)
+      await Array.fromAsync(addE[operationFactoryKey]({ ctx: { kvStore, diagnostics: diags() }, args: ['t', fakeA, fakeB] }))
+    }, (err) => err?.code === Errors.EDGE_INCOMING_MISSING)
+  })
+
+  test('non-existent outgoing vertex rejects with EDGE_OUTGOING_MISSING', async () => {
+    const kvStore = await setupKV()
+    const [incoming] = await Array.fromAsync(addV[operationFactoryKey]({ ctx: { kvStore, diagnostics: diags() }, args: ['Present'] }))
+    const missingOutgoing = 'missing-outgoing-vertex'
+    await assert.rejects(async () => {
+      await Array.fromAsync(addE[operationFactoryKey]({ ctx: { kvStore, diagnostics: diags() }, args: ['t', incoming, missingOutgoing] }))
+    }, (err) => err?.code === Errors.EDGE_OUTGOING_MISSING)
   })
 })

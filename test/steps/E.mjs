@@ -1,14 +1,18 @@
 import assert from 'node:assert/strict'
-import test, { suite } from 'node:test'
+import test, { suite, after } from 'node:test'
 
 import { E } from '../../steps/root/E.js'
 import { operationFactoryKey } from '../../steps/types.js'
 import { kvProvider } from '../../kvProvider/memory/provider.js'
+import { diagnostics } from '../../diagnosticsProvider/index.js'
 
+const closers = []
 async function setupKV() {
-  const { interface: kvStore } = await kvProvider()
-  return kvStore
+  const kvp = await kvProvider({ ctx: { diagnostics: diagnostics() } })
+  closers.push(() => kvp.close?.())
+  return kvp.interface
 }
+after(async () => { for (const c of closers) await c?.() })
 
 suite('E() interface', () => {
   test('E() returns async-iterable and is lazy', async () => {

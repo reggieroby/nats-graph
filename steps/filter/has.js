@@ -1,15 +1,15 @@
 import { vertexLabel, edgeLabel } from '../terminal/label.js'
-import { operationResultTypeKey, operationFactoryKey, operationResultType, operationNameKey, operationName, operationStreamWrapperKey } from '../types.js'
+import { operationResultTypeKey, operationFactoryKey, operationResultType, operationNameKey, operationName, operationStreamWrapperKey, Errors } from '../types.js'
 
 
 export const vertexHas = {
   [operationNameKey]: operationName.has,
   [operationResultTypeKey]: operationResultType.vertex,
-  [operationStreamWrapperKey]({ ctx: { kvStore, assertAndLog } = {}, args: [key, expected] } = {}) {
+  [operationStreamWrapperKey]({ ctx: { kvStore, diagnostics } = {}, args: [key, expected] } = {}) {
     return (source) => (async function* () {
-      assertAndLog(kvStore, 'kvStore required in ctx for has()');
-      assertAndLog(typeof key === 'string' && key.length > 0, 'has(key, value) requires string, non-empty key');
-      const t = typeof expected; assertAndLog(t === 'string' || t === 'number' || t === 'boolean', 'has(key, value) requires scalar value (string|number|boolean)');
+      diagnostics?.require(typeof key === 'string' && key.length > 0, Errors.HAS_INVALID_KEY, 'has(key, value) requires string, non-empty key', { key });
+      const t = typeof expected;
+      diagnostics?.require(t === 'string' || t === 'number' || t === 'boolean', Errors.HAS_INVALID_VALUE, 'has(key, value) requires scalar value (string|number|boolean)', { expected, type: t });
 
       for await (const vertexId of source) {
         let getValue;
@@ -27,14 +27,12 @@ export const vertexHas = {
       }
     })()
   },
-  [operationFactoryKey]({ parent: vertexId, ctx: { kvStore, assertAndLog } = {}, args: [key, expected] } = {}) {
-    // Validate inputs early so invalid usage surfaces as TypeError via assertAndLog
-    assertAndLog(kvStore, 'kvStore required in ctx for has()');
-    assertAndLog(args.length === 2, 'has(key, value) requires exactly 2 arguments');
-    assertAndLog(typeof key === 'string', 'has(key, value) requires string key');
-    assertAndLog(key.length > 0, 'has(key, value) requires non-empty key');
+  [operationFactoryKey]({ parent: vertexId, ctx: { kvStore, diagnostics } = {}, args: [key, expected] } = {}) {
+    // Validate inputs early so invalid usage surfaces clearly
+    diagnostics?.require(typeof key === 'string', Errors.HAS_INVALID_KEY, 'has(key, value) requires string key', { key });
+    diagnostics?.require(key.length > 0, Errors.HAS_INVALID_KEY, 'has(key, value) requires non-empty key', { key });
     const expectedType = typeof expected;
-    assertAndLog(expectedType === 'string' || expectedType === 'number' || expectedType === 'boolean', 'has(key, value) requires scalar value (string|number|boolean)');
+    diagnostics?.require(expectedType === 'string' || expectedType === 'number' || expectedType === 'boolean', Errors.HAS_INVALID_VALUE, 'has(key, value) requires scalar value (string|number|boolean)', { expected, type: expectedType });
     async function* iterator() {
       let getValue;
       if (key === 'label') {
@@ -61,12 +59,12 @@ export const vertexHas = {
 export const edgeHas = {
   [operationNameKey]: operationName.has,
   [operationResultTypeKey]: operationResultType.edge,
-  [operationStreamWrapperKey]({ ctx: { kvStore, assertAndLog } = {}, args = [] } = {}) {
+  [operationStreamWrapperKey]({ ctx: { kvStore, diagnostics } = {}, args = [] } = {}) {
     return (source) => (async function* () {
       const [key, expected] = args;
-      assertAndLog(kvStore, 'kvStore required in ctx for has()');
-      assertAndLog(typeof key === 'string' && key.length > 0, 'has(key, value) requires string, non-empty key');
-      const t = typeof expected; assertAndLog(t === 'string' || t === 'number' || t === 'boolean', 'has(key, value) requires scalar value (string|number|boolean)');
+      diagnostics?.require(typeof key === 'string' && key.length > 0, Errors.HAS_INVALID_KEY, 'has(key, value) requires string, non-empty key', { key });
+      const t = typeof expected;
+      diagnostics?.require(t === 'string' || t === 'number' || t === 'boolean', Errors.HAS_INVALID_VALUE, 'has(key, value) requires scalar value (string|number|boolean)', { expected, type: t });
 
       for await (const edgeId of source) {
         let getValue;
@@ -84,15 +82,12 @@ export const edgeHas = {
       }
     })()
   },
-  [operationFactoryKey]({ parent: edgeId, ctx: { kvStore, assertAndLog } = {}, args = [] } = {}) {
-    const [key, expected] = args;
-    // Validate inputs early so invalid usage surfaces as TypeError via assertAndLog
-    assertAndLog(kvStore, 'kvStore required in ctx for has()');
-    assertAndLog(args.length === 2, 'has(key, value) requires exactly 2 arguments');
-    assertAndLog(typeof key === 'string', 'has(key, value) requires string key');
-    assertAndLog(key.length > 0, 'has(key, value) requires non-empty key');
+  [operationFactoryKey]({ parent: edgeId, ctx: { kvStore, diagnostics } = {}, args: [key, expected] } = {}) {
+    // Validate inputs early so invalid usage surfaces clearly
+    diagnostics?.require(typeof key === 'string', Errors.HAS_INVALID_KEY, 'has(key, value) requires string key', { key });
+    diagnostics?.require(key.length > 0, Errors.HAS_INVALID_KEY, 'has(key, value) requires non-empty key', { key });
     const expectedType = typeof expected;
-    assertAndLog(expectedType === 'string' || expectedType === 'number' || expectedType === 'boolean', 'has(key, value) requires scalar value (string|number|boolean)');
+    diagnostics?.require(expectedType === 'string' || expectedType === 'number' || expectedType === 'boolean', Errors.HAS_INVALID_VALUE, 'has(key, value) requires scalar value (string|number|boolean)', { expected, type: expectedType });
     async function* iterator() {
       let getValue;
       if (key === 'label') {

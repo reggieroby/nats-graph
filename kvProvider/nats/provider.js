@@ -1,13 +1,33 @@
-import assert from "node:assert";
 import { connectionFactory } from "./natsConnection.js";
 
-export async function kvProvider({ bucket, ...config } = {}) {
-  assert(config && typeof config === 'object', 'Configuration object is required');
-  const { servers } = config
-  assert(servers, "Configuration property 'servers' is required");
-  bucket ||= 'graph'
+// Centralized error codes for this provider
+export const KVProviderErrors = {
+  CONFIG_REQUIRED: 'E_KV_PROVIDER_CONFIG_REQUIRED',
+  SERVERS_REQUIRED: 'E_KV_PROVIDER_SERVERS_REQUIRED',
+  BUCKET_REQUIRED: 'E_KV_PROVIDER_BUCKET_REQUIRED',
+}
 
-  const connection = connectionFactory(config)
+export async function kvProvider({ config = {}, ctx: {
+  diagnostics
+} } = {}) {
+  diagnostics.require(
+    config && typeof config === 'object',
+    KVProviderErrors.CONFIG_REQUIRED,
+    'Invalid config: expected an object'
+  );
+  const { servers, bucket } = config
+  diagnostics.require(
+    servers,
+    KVProviderErrors.SERVERS_REQUIRED,
+    'Missing config.servers: NATS server address required'
+  );
+  diagnostics.require(
+    bucket,
+    KVProviderErrors.BUCKET_REQUIRED,
+    'Missing config.bucket: KV bucket name required'
+  );
+
+  const connection = connectionFactory({ servers })
   const connBucket = await connection.bucket(bucket)
   return {
     close: connection.close,

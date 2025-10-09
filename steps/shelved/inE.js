@@ -1,4 +1,4 @@
-import { operationFactoryKey, operationNameKey, operationName, operationResultType, operationResultTypeKey } from '../types.js'
+import { operationFactoryKey, operationNameKey, operationName, operationResultType, operationResultTypeKey, Errors } from '../types.js'
 
 const normalizeLabels = (args) => {
   if (!Array.isArray(args)) return []
@@ -21,7 +21,7 @@ export const inE = {
   [operationNameKey]: operationName.inE,
   [operationResultTypeKey]: operationResultType.edge,
   [operationFactoryKey]({ parent, ctx = {}, args = [] } = {}) {
-    const { kvStore: store, assertAndLog } = ctx;
+    const { kvStore: store, diagnostics } = ctx;
     const vertexId = parent == null ? null : String(parent)
     if (!vertexId) {
       async function* empty() { }
@@ -29,7 +29,7 @@ export const inE = {
     }
 
     const wanted = new Set(normalizeLabels(args))
-    assertAndLog(store, 'kvStore required in ctx for inE() traversal');
+    diagnostics?.require(!!store, Errors.KVSTORE_MISSING, 'kvStore required in ctx for inE() traversal', { where: 'shelved/inE.factory' });
     const edgeIds = new Set()
 
     const addFromIndex = async (key) => {

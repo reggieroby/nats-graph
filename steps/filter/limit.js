@@ -4,15 +4,21 @@ import {
   operationResultType,
   operationResultTypeKey,
   operationStreamWrapperKey,
+  Errors,
 } from '../types.js'
 
 const createLimitStep = (resultType) => ({
   [operationNameKey]: operationName.limit,
   [operationResultTypeKey]: resultType,
   [operationStreamWrapperKey]({ ctx = {}, args = [] } = {}) {
-    const { assertAndLog } = ctx;
+    const { diagnostics } = ctx;
     const [n] = args
-    assertAndLog(Number.isInteger(n) && n >= 0, 'limit(n) requires a non-negative integer.')
+    diagnostics?.require(
+      Number.isInteger(n) && n >= 0,
+      Errors.LIMIT_INVALID,
+      'limit(n) requires a non-negative integer.',
+      { n }
+    )
 
     return (source) => (async function* () {
       let seen = 0

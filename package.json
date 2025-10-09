@@ -11,7 +11,7 @@
     "node": ">=20.0.0"
   },
   "scripts": {
-    "test": "node --env-file=test/.env test/run.js",
+    "test": "clear && node --env-file=test/.env test/run.js",
     "compileErrors": "node -e \"import('./index.js').catch(err=>{console.error(err); process.exit(1)})\""
   },
   "dependencies": {
@@ -26,7 +26,8 @@
     "config.js",
     "steps/",
     "optimizer/",
-    "kvProvider/"
+    "kvProvider/",
+    "diagnosticsProvider/"
   ],
   "license": "UNLICENSED",
   "keywords": [

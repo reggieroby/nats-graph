@@ -1,4 +1,4 @@
-export async function kvProvider(config = {}) {
+export async function kvProvider({ config = {}, ctx } = {}) {
   const store = new Map()
   let rev = 0
 

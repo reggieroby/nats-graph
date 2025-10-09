@@ -8,8 +8,9 @@ import { runUpdateSuite } from './update.shared.mjs'
 import { runDeleteSuite } from './delete.shared.mjs'
 import { runCreateSuite } from './create.shared.mjs'
 import { runKeysSharedSuite } from './keys.shared.mjs'
+import { diagnostics } from '../../diagnosticsProvider/index.js'
 
-const setup = async () => kvProvider({ bucket: `testing-${ulid()}` })
+const setup = async () => kvProvider({ config: { bucket: `testing-${ulid()}` }, ctx: { diagnostics: diagnostics() } })
 
 runGetSuite({ label: 'memory', setup })
 runPutSuite({ label: 'memory', setup })
@@ -20,7 +21,7 @@ runCreateSuite({ label: 'memory', setup, variant: 'memory' })
 runKeysSharedSuite({
   label: 'memory',
   setup: async () => {
-    const kvp = await kvProvider()
+    const kvp = await kvProvider({ ctx: { diagnostics: diagnostics() } })
     const kv = kvp.interface
     return { kvp, kv }
   }
@@ -30,7 +31,7 @@ runKeysSharedSuite({
 suite('kvStoreProvider/memory.keys() specifics', () => {
   let kv
   before(async () => {
-    const kvp = await kvProvider()
+    const kvp = await kvProvider({ ctx: { diagnostics: diagnostics() } })
     kv = kvp.interface
   })
 

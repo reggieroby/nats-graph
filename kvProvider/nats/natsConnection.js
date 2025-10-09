@@ -11,7 +11,7 @@ export const connectionFactory = (config) => {
     jetstream: null,
     jetstreamManager: null,
     Kvm: null,
-    bucket: [],
+    bucket: {},
   }
   return new Proxy(connectionTemplateObject, {
     get(_target, prop, thisProxy) {

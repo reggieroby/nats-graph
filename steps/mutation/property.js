@@ -1,15 +1,12 @@
-import { operationResultTypeKey, operationFactoryKey, operationResultType as sharedElementType, operationNameKey, operationName, operationStreamWrapperKey } from '../types.js'
+import { operationResultTypeKey, operationFactoryKey, operationResultType as sharedElementType, operationNameKey, operationName, operationStreamWrapperKey, Errors } from '../types.js'
 
 export const vertexPropertyStep = {
   [operationNameKey]: operationName.property,
   [operationResultTypeKey]: sharedElementType.vertex,
-  [operationStreamWrapperKey]({ ctx = {}, args = [] } = {}) {
-    const { kvStore, assertAndLog } = ctx;
-    const [k, v] = args;
-    assertAndLog(kvStore, 'kvStore required in ctx for property()');
-    assertAndLog(typeof k === 'string' && k.length > 0, 'property(key, value) requires string key');
-    assertAndLog(!['id', 'label'].includes(k), `Reserved key. Property ${k} not allowed.`);
-    const t = typeof v; assertAndLog(v !== undefined && (t === 'string' || t === 'number' || t === 'boolean' || t === 'object'), 'Invalid value type for property()');
+  [operationStreamWrapperKey]({ ctx: { kvStore, diagnostics }, args: [k, v] } = {}) {
+    diagnostics?.require(typeof k === 'string' && k.length > 0, Errors.PROPERTY_INVALID_KEY, 'property(key, value) requires string key', { key: k });
+    diagnostics?.require(!['id', 'label'].includes(k), Errors.PROPERTY_RESERVED_KEY, `Reserved key. Property ${k} not allowed.`, { key: k });
+    const t = typeof v; diagnostics?.require(v !== undefined && (t === 'string' || t === 'number' || t === 'boolean' || t === 'object'), Errors.PROPERTY_INVALID_VALUE, 'Invalid value type for property()', { value: v, type: t });
     return (source) => (async function* () {
       for await (const vertexId of source) {
         await kvStore.update(`node.${vertexId}.property.${k}`, JSON.stringify(v));
@@ -17,17 +14,13 @@ export const vertexPropertyStep = {
       }
     })()
   },
-  [operationFactoryKey]({ parent: vertexId, ctx = {}, args = [] } = {}) {
-    const { kvStore, assertAndLog } = ctx;
-    const [k, v] = args;
+  [operationFactoryKey]({ parent: vertexId, ctx: { kvStore, diagnostics }, args: [k, v] } = {}) {
     // Preconditions and validation
-    assertAndLog(kvStore, 'kvStore required in ctx for property()');
-    assertAndLog(args.length === 2, 'property(key, value) requires exactly 2 arguments');
-    assertAndLog(typeof k === 'string', 'property(key, value) requires string key');
-    assertAndLog(k.length > 0, 'property(key, value) requires non-empty key');
-    assertAndLog(!['id', 'label'].includes(k), `Reserved key. Property ${k} not allowed.`);
+    diagnostics?.require(typeof k === 'string', Errors.PROPERTY_INVALID_KEY, 'property(key, value) requires string key', { key: k });
+    diagnostics?.require(k.length > 0, Errors.PROPERTY_INVALID_KEY, 'property(key, value) requires non-empty key', { key: k });
+    diagnostics?.require(!['id', 'label'].includes(k), Errors.PROPERTY_RESERVED_KEY, `Reserved key. Property ${k} not allowed.`, { key: k });
     const t = typeof v;
-    assertAndLog(v !== undefined && (t === 'string' || t === 'number' || t === 'boolean' || t === 'object'), 'Invalid value type for property()');
+    diagnostics?.require(v !== undefined && (t === 'string' || t === 'number' || t === 'boolean' || t === 'object'), Errors.PROPERTY_INVALID_VALUE, 'Invalid value type for property()', { value: v, type: t });
     async function* itr() {
       await kvStore.update(`node.${vertexId}.property.${k}`, JSON.stringify(v));
       yield vertexId;
@@ -43,12 +36,11 @@ export const edgePropertyStep = {
   [operationNameKey]: operationName.property,
   [operationResultTypeKey]: sharedElementType.edge,
   [operationStreamWrapperKey]({ ctx = {}, args = [] } = {}) {
-    const { kvStore, assertAndLog } = ctx;
+    const { kvStore, diagnostics } = ctx;
     const [k, v] = args;
-    assertAndLog(kvStore, 'kvStore required in ctx for property()');
-    assertAndLog(typeof k === 'string' && k.length > 0, 'property(key, value) requires string key');
-    assertAndLog(!['id', 'label'].includes(k), `Reserved key. Property ${k} not allowed.`);
-    const t = typeof v; assertAndLog(v !== undefined && (t === 'string' || t === 'number' || t === 'boolean' || t === 'object'), 'Invalid value type for property()');
+    diagnostics?.require(typeof k === 'string' && k.length > 0, Errors.PROPERTY_INVALID_KEY, 'property(key, value) requires string key', { key: k });
+    diagnostics?.require(!['id', 'label'].includes(k), Errors.PROPERTY_RESERVED_KEY, `Reserved key. Property ${k} not allowed.`, { key: k });
+    const t = typeof v; diagnostics?.require(v !== undefined && (t === 'string' || t === 'number' || t === 'boolean' || t === 'object'), Errors.PROPERTY_INVALID_VALUE, 'Invalid value type for property()', { value: v, type: t });
     return (source) => (async function* () {
       for await (const edgeId of source) {
         await kvStore.update(`edge.${edgeId}.property.${k}`, JSON.stringify(v));
@@ -56,17 +48,13 @@ export const edgePropertyStep = {
       }
     })()
   },
-  [operationFactoryKey]({ parent: edgeId, ctx = {}, args = [] } = {}) {
-    const { kvStore, assertAndLog } = ctx;
-    const [k, v] = args;
+  [operationFactoryKey]({ parent: edgeId, ctx: { kvStore, diagnostics }, args: [k, v] } = {}) {
     // Preconditions and validation
-    assertAndLog(kvStore, 'kvStore required in ctx for property()');
-    assertAndLog(args.length === 2, 'property(key, value) requires exactly 2 arguments');
-    assertAndLog(typeof k === 'string', 'property(key, value) requires string key');
-    assertAndLog(k.length > 0, 'property(key, value) requires non-empty key');
-    assertAndLog(!['id', 'label'].includes(k), `Reserved key. Property ${k} not allowed.`);
+    diagnostics?.require(typeof k === 'string', Errors.PROPERTY_INVALID_KEY, 'property(key, value) requires string key', { key: k });
+    diagnostics?.require(k.length > 0, Errors.PROPERTY_INVALID_KEY, 'property(key, value) requires non-empty key', { key: k });
+    diagnostics?.require(!['id', 'label'].includes(k), Errors.PROPERTY_RESERVED_KEY, `Reserved key. Property ${k} not allowed.`, { key: k });
     const t = typeof v;
-    assertAndLog(v !== undefined && (t === 'string' || t === 'number' || t === 'boolean' || t === 'object'), 'Invalid value type for property()');
+    diagnostics?.require(v !== undefined && (t === 'string' || t === 'number' || t === 'boolean' || t === 'object'), Errors.PROPERTY_INVALID_VALUE, 'Invalid value type for property()', { value: v, type: t });
     async function* iterator() {
       await kvStore.update(`edge.${edgeId}.property.${k}`, JSON.stringify(v));
       yield edgeId;

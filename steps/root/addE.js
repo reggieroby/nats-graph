@@ -1,24 +1,24 @@
 import { uniqueID } from '../../config.js'
-import { operationResultTypeKey, operationFactoryKey, operationResultType, operationNameKey, operationName, operationStreamWrapperKey } from '../types.js'
+import { operationResultTypeKey, operationFactoryKey, operationResultType, operationNameKey, operationName, operationStreamWrapperKey, Errors } from '../types.js'
 
 export const addE = {
   [operationNameKey]: operationName.addE,
   [operationResultTypeKey]: operationResultType.edge,
   [operationStreamWrapperKey]({
-    ctx: { kvStore, assertAndLog } = {},
+    ctx: { kvStore, diagnostics } = {},
     args: [label, incoming, outgoing] = []
   } = {}) {
     return (_source) => (async function* () {
-      assertAndLog(typeof label === 'string' && label.length, 'type required');
-      assertAndLog(typeof incoming === 'string' && incoming.length, 'incoming required');
-      assertAndLog(typeof outgoing === 'string' && outgoing.length, 'outgoing required');
+      diagnostics?.require(typeof label === 'string' && label.length, Errors.EDGE_LABEL_REQUIRED, 'type required', { label });
+      diagnostics?.require(typeof incoming === 'string' && incoming.length, Errors.EDGE_INCOMING_REQUIRED, 'incoming required', { incoming });
+      diagnostics?.require(typeof outgoing === 'string' && outgoing.length, Errors.EDGE_OUTGOING_REQUIRED, 'outgoing required', { outgoing });
 
       const [inExists, outExists] = await Promise.all([
         kvStore.get(`node.${incoming}`),
         kvStore.get(`node.${outgoing}`),
       ])
-      assertAndLog(!!inExists, `incoming vertex does not exist: ${incoming}`)
-      assertAndLog(!!outExists, `outgoing vertex does not exist: ${outgoing}`)
+      diagnostics?.require(!!inExists, Errors.EDGE_INCOMING_MISSING, `incoming vertex does not exist: ${incoming}`, { incoming });
+      diagnostics?.require(!!outExists, Errors.EDGE_OUTGOING_MISSING, `outgoing vertex does not exist: ${outgoing}`, { outgoing });
 
       const id = uniqueID();
       await Promise.all([
@@ -34,9 +34,7 @@ export const addE = {
         kvStore.put(`node.${incoming}.outV.${label}.${outgoing}`, ""),
         kvStore.put(`node.${outgoing}.inV.${incoming}`, ""),
         kvStore.put(`node.${outgoing}.inV.${label}.${incoming}`, ""),
-      ]).catch(_err => {
-        assertAndLog(false, `Failed to create edge(${label}):${id} incoming:${incoming} outgoing:${outgoing}`);
-      })
+      ])
 
       const pushUnique = async (key, value) => {
         try {
@@ -65,12 +63,12 @@ export const addE = {
     })()
   },
   [operationFactoryKey]({
-    ctx: { kvStore, assertAndLog } = {},
+    ctx: { kvStore, diagnostics } = {},
     args: [label, incoming, outgoing] } = {}
   ) {
-    assertAndLog(typeof label === 'string' && label.length, 'type required');
-    assertAndLog(typeof incoming === 'string' && incoming.length, 'incoming required');
-    assertAndLog(typeof outgoing === 'string' && outgoing.length, 'outgoing required');
+    diagnostics?.require(typeof label === 'string' && label.length, Errors.EDGE_LABEL_REQUIRED, 'type required', { label });
+    diagnostics?.require(typeof incoming === 'string' && incoming.length, Errors.EDGE_INCOMING_REQUIRED, 'incoming required', { incoming });
+    diagnostics?.require(typeof outgoing === 'string' && outgoing.length, Errors.EDGE_OUTGOING_REQUIRED, 'outgoing required', { outgoing });
 
     async function* itr() {
       // Ensure both endpoint vertices exist before creating the edge
@@ -78,8 +76,8 @@ export const addE = {
         kvStore.get(`node.${incoming}`),
         kvStore.get(`node.${outgoing}`),
       ])
-      assertAndLog(!!inExists, `incoming vertex does not exist: ${incoming}`)
-      assertAndLog(!!outExists, `outgoing vertex does not exist: ${outgoing}`)
+      diagnostics?.require(!!inExists, Errors.EDGE_INCOMING_MISSING, `incoming vertex does not exist: ${incoming}`, { incoming });
+      diagnostics?.require(!!outExists, Errors.EDGE_OUTGOING_MISSING, `outgoing vertex does not exist: ${outgoing}`, { outgoing });
 
       const id = uniqueID();
       await Promise.all([
@@ -103,9 +101,7 @@ export const addE = {
         kvStore.put(`node.${outgoing}.inV.${incoming}`, ""),
         kvStore.put(`node.${outgoing}.inV.${label}.${incoming}`, ""),
 
-      ]).catch(_err => {
-        assertAndLog(false, `Failed to create edge(${label}):${id} incoming:${incoming} outgoing:${outgoing}`);
-      })
+      ])
 
       // Maintain compact adjacency arrays to enable 1 read + loop traversal
       const pushUnique = async (key, value) => {

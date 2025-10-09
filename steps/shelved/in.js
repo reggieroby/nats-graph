@@ -1,4 +1,4 @@
-import { operationResultTypeKey, operationFactoryKey, operationResultType as sharedElementType, operationNameKey, operationName } from '../types.js'
+import { operationResultTypeKey, operationFactoryKey, operationResultType as sharedElementType, operationNameKey, operationName, Errors } from '../types.js'
 
 const normalizeLabels = (args) => {
   if (!Array.isArray(args)) return []
@@ -11,8 +11,8 @@ export const inStep = {
   [operationNameKey]: operationName.in,
   [operationResultTypeKey]: sharedElementType.vertex,
   [operationFactoryKey]({ parent, ctx = {}, args = [] } = {}) {
-    const { kvStore: store, assertAndLog } = ctx;
-    assertAndLog(false, "Please update this function to steps folder")
+    const { kvStore: store, diagnostics } = ctx;
+    diagnostics?.invariant(false, Errors.NOT_IMPLEMENTED, "Please update this function to steps folder", { step: 'shelved/in' })
     const vertexId = parent == null ? null : String(parent)
     if (!vertexId) {
       async function* empty() { }
@@ -22,7 +22,7 @@ export const inStep = {
     const wanted = new Set(normalizeLabels(args))
 
     async function* iterator() {
-      assertAndLog(store, 'kvStore required in ctx for in() traversal');
+      diagnostics?.require(!!store, Errors.KVSTORE_MISSING, 'kvStore required in ctx for in() traversal', { where: 'shelved/in.iterator' });
       const seen = new Set()
       try {
         if (wanted.size > 0) {

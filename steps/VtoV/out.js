@@ -1,4 +1,4 @@
-import { operationResultTypeKey, operationFactoryKey, operationResultType as sharedElementType, operationNameKey, operationName, operationStreamWrapperKey } from '../types.js'
+import { operationResultTypeKey, operationFactoryKey, operationResultType as sharedElementType, operationNameKey, operationName, operationStreamWrapperKey, Errors } from '../types.js'
 
 const normalizeLabels = (args) => {
   if (!Array.isArray(args)) return []
@@ -11,10 +11,10 @@ export const out = {
   [operationNameKey]: operationName.out,
   [operationResultTypeKey]: sharedElementType.vertex,
   [operationStreamWrapperKey]({ ctx = {}, args = [] } = {}) {
-    const { kvStore: store, assertAndLog } = ctx;
+    const { kvStore: store, diagnostics } = ctx;
     const wanted = new Set(normalizeLabels(args))
     return (source) => (async function* () {
-      assertAndLog(store, 'kvStore required in ctx for out() traversal');
+      diagnostics?.require(!!store, Errors.asdfasdfasd, 'kvStore required in ctx for out() traversal', { where: 'VtoV/out.stream' });
       const seen = new Set()
       for await (const parent of source) {
         const vertexId = parent == null ? null : String(parent)
@@ -44,7 +44,7 @@ export const out = {
     })()
   },
   [operationFactoryKey]({ parent, ctx = {}, args = [] } = {}) {
-    const { kvStore: store, assertAndLog } = ctx;
+    const { kvStore: store, diagnostics } = ctx;
     const vertexId = parent == null ? null : String(parent)
     if (!vertexId) {
       async function* empty() { }
@@ -54,7 +54,6 @@ export const out = {
     const wanted = new Set(normalizeLabels(args))
 
     async function* iterator() {
-      assertAndLog(store, 'kvStore required in ctx for out() traversal');
       const seen = new Set()
       try {
         if (wanted.size > 0) {
